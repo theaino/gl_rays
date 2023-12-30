@@ -142,7 +142,10 @@ CMakeFiles/gl_rays.dir/src/main.cpp.o: \
  /usr/include/c++/13.2.1/bits/stl_uninitialized.h \
  /usr/include/c++/13.2.1/bits/stl_vector.h \
  /usr/include/c++/13.2.1/bits/stl_bvector.h \
- /usr/include/c++/13.2.1/bits/vector.tcc \
+ /usr/include/c++/13.2.1/bits/vector.tcc /usr/include/c++/13.2.1/chrono \
+ /usr/include/c++/13.2.1/bits/chrono.h /usr/include/c++/13.2.1/ratio \
+ /usr/include/c++/13.2.1/limits /usr/include/c++/13.2.1/ctime \
+ /usr/include/c++/13.2.1/bits/parse_numbers.h \
  /home/aino/Documents/gl_rays/src/shader.cpp \
  /usr/include/c++/13.2.1/fstream /usr/include/c++/13.2.1/bits/codecvt.h \
  /usr/include/c++/13.2.1/x86_64-pc-linux-gnu/bits/basic_file.h \

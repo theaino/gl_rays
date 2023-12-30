@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #include "shader.cpp"
 #include "plane.cpp"
@@ -16,7 +17,8 @@ typedef struct sphere {
   float center[3];
   float radius;
   float color[4];
-  int source; float __padding[3];
+  float source;
+  float reflect_angle; float __padding[2];
 } t_sphere;
 
 int main(int argc, char** argv)
@@ -58,35 +60,51 @@ int main(int argc, char** argv)
 
   GLuint plane = createPlane();
 
-  GLuint texture = createTexture(TEXTURE_WIDTH, TEXTURE_HEIGHT);
-
+  GLuint texture = createTexture(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_TEXTURE0);
+  GLuint old_texture = createTexture(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_TEXTURE1);
+  while((err = glGetError()) != GL_NO_ERROR) {
+    std::cerr << err << std::endl;
+  }
 
   std::vector<t_sphere> spheres = {
     {
-      {-1, 1, 2},
+      {0, 2, 5},
       1,
       {0, 0, 1, 1},
-      1,
+      10,
+      30,
     },
     {
-      {1, 0, 3},
+      {-2, 0, 5},
       1,
       {0, 1, 0, 1},
-      0
+      0,
+      30,
     },
     {
-      {-1, -1, 3},
+      {0, -2, 5},
       1,
       {1, 0, 0, 1},
-      0
+      0,
+      30,
     },
     {
-      {1, -1, 2},
+      {2, 0, 5},
       1,
-      {1, 0, 0, 1},
-      1
+      {1, 1, 0, 1},
+      0,
+      30,
     },
+    // {
+    //   {10, 0, 10},
+    //   10,
+    //   {1, 1, 1, 1},
+    //   1,
+    //   10,
+    // }
   };
+
+  unsigned long frame_count = 0;
 
   GLuint ssbo;
   glGenBuffers(1, &ssbo);
@@ -94,6 +112,9 @@ int main(int argc, char** argv)
   glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(t_sphere), spheres.data(), GL_STATIC_DRAW);
 
   while(!glfwWindowShouldClose(window)) {
+    auto t_start = std::chrono::high_resolution_clock::now();
+    long long current_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_start.time_since_epoch()).count();
+
     glfwSwapBuffers(window);
     
     glClearColor(0, 0, 0, 1);
@@ -103,6 +124,9 @@ int main(int argc, char** argv)
 
     glUseProgram(compute_program);
     glUniform1i(glGetUniformLocation(compute_program, "sphere_count"), spheres.size());
+    glUniform1ui(glGetUniformLocation(compute_program, "time"), frame_count);
+    glUniform1i(glGetUniformLocation(compute_program, "img_old"), 1);
+
     glDispatchCompute((unsigned int)TEXTURE_WIDTH / 32, (unsigned int)TEXTURE_HEIGHT / 32, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
@@ -116,6 +140,12 @@ int main(int argc, char** argv)
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glfwPollEvents();
+    auto t_end = std::chrono::high_resolution_clock::now();
+    
+    frame_count++;
+    double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+    // double fps = 1000 / elapsed_time_ms;
+    // std::cout << fps << std::endl;
   }
 
   glfwDestroyWindow(window);

@@ -1,15 +1,16 @@
 #version 460 core
-#define MAX_BOUNCES 3
+#define MAX_BOUNCES 20
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(rgba32f, binding = 0) uniform image2D imgOutput;
+layout(rgba32f, binding = 0) uniform image2D img_output;
 
 struct Sphere {
     vec3 center;
     float radius;
     vec4 color;
-    int source;
+    float source;
+    float reflect_angle;
 };
 
 layout(std430, binding = 2) buffer SphereBlock {
@@ -17,6 +18,31 @@ layout(std430, binding = 2) buffer SphereBlock {
 };
 
 uniform int sphere_count;
+uniform uint time;
+layout(rgba32f) uniform image2D img_old;
+
+uint murmur_hash11(uint src) {
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
+}
+
+uint murmur_hash13(uvec3 src) {
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
+}
+
+float hash11(uint src) {
+    uint h = murmur_hash11(src);
+    return uintBitsToFloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}
 
 float sphere_line_lambda(vec3 direction, vec3 origin, vec3 center, float radius) {
     return pow(dot(direction, origin - center), 2) - (dot(origin - center, origin - center) - radius * radius);
@@ -27,32 +53,62 @@ float sphere_line_intersection(vec3 direction, vec3 origin, vec3 center, float r
     return distance;
 }
 
-vec3 sphere_reflect_direction(vec3 center, vec3 direction, vec3 collision) {
-    vec3 norm = collision - center;
-    norm = normalize(norm);
-    return direction - (2 * norm * dot(direction, norm));
+vec3 reflect_normal(vec3 direction, vec3 normal) {
+    return direction - (2 * normal * dot(direction, normal));
 }
 
-vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
+mat3 rotate_x(float angle) {
+    return mat3(1, 0, 0,
+                0, cos(angle), -sin(angle),
+                0, sin(angle), cos(angle));
+}
+
+mat3 rotate_z(float angle) {
+    return mat3(cos(angle), -sin(angle), 0,
+                sin(angle), cos(angle), 0,
+                0, 0, 1);
+}
+
+vec3 rotate_vector_normal(vec3 vector, vec3 normal, float alpha, float beta) {
+    mat3 r_x = rotate_x(alpha);
+    mat3 r_z = rotate_z(beta);
+
+    vec3 basis_x = normalize(cross(rotate_x(radians(90)) * normal, normal));
+    vec3 basis_z = normalize(cross(basis_x, normal));
+
+    mat3 to_normal = mat3(basis_x,
+                          normal,
+                          basis_z);
+    mat3 from_normal = transpose(to_normal);
+    vec3 transformed = from_normal * vector;
+
+    transformed = r_z * r_x * transformed;
+
+    return to_normal * transformed;
+    // return vector;
+}
+
+vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
+    uint state = murmur_hash13(uvec3(gl_GlobalInvocationID.xy, time));
     vec3 c_direction = direction;
     vec3 c_origin = origin;
     int c_bounces = bounces;
-    vec3 color = vec3(0);
+    vec4 color = vec4(0);
 
     while (true) {
-        int count = bounces - c_bounces;
+        int count = bounces - c_bounces + 1;
         if (c_bounces == 0) {
-            return color / count;
+            return color / count * (color.a + 0.25);
         }
         int sphere_idx = -1;
         float min_distance = 0;
         for (int i = 0; i < sphere_count; i++) {
             float lambda = sphere_line_lambda(c_direction, c_origin, spheres[i].center, spheres[i].radius);
-            if (lambda < 0) {
+            if (lambda <= 0) {
                 continue;
             }
             float distance = sphere_line_intersection(c_direction, c_origin, spheres[i].center, spheres[i].radius, lambda);
-            if (distance < 0) {
+            if (distance <= 0) {
                 continue;
             }
 
@@ -62,19 +118,24 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
             }
         }
         if (sphere_idx == -1) {
-            return color / count * 0.1;
+            return color / count * (color.a + 0.25);
         }
-        // color *= spheres[sphere_idx].color;
-        color += spheres[sphere_idx].color.xyz;
-        // color = vec4(mix(color.xyz, spheres[sphere_idx].color.xyz, 0.5), 1);
+        color += vec4(spheres[sphere_idx].color.rgb, spheres[sphere_idx].source);
         vec3 collision = min_distance * direction + origin;
-        if (spheres[sphere_idx].source != 0) {
-            return color / count;
-        } else {
-            c_direction = sphere_reflect_direction(spheres[sphere_idx].center, direction, collision);
-            c_origin = collision;
-            c_bounces--;
-        }
+
+        vec3 normal = collision - spheres[sphere_idx].center;
+        normal = normalize(normal);
+        c_direction = reflect_normal(direction, normal);
+
+        float alpha = radians(hash11(state) * spheres[sphere_idx].reflect_angle);
+        state = murmur_hash11(state);
+        float beta = radians(hash11(state) * spheres[sphere_idx].reflect_angle);
+        state = murmur_hash11(state);
+        vec2 angle = vec2(cos(alpha), sin(alpha)) * beta;
+        c_direction = rotate_vector_normal(c_direction, normalize(normal), alpha, beta);
+
+        c_origin = collision;
+        c_bounces--;
     }
 }
 
@@ -83,8 +144,12 @@ void main() {
 
     vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
     direction = normalize(direction);
-    vec3 value = calculate_color(direction, vec3(0), MAX_BOUNCES);
+    vec4 old_color = imageLoad(img_old, texelCoord);
+    vec4 value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
+    vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
+    // vec4 mixed_value = mix(old_color, value, 1);
 
-    imageStore(imgOutput, texelCoord, vec4(value, 1));
+    imageStore(img_old, texelCoord, mixed_value);
+    imageStore(img_output, texelCoord, mixed_value);
 }
 

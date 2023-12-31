@@ -73,7 +73,7 @@ vec3 rotate_vector_normal(vec3 vector, vec3 normal, float alpha, float beta) {
     mat3 r_x = rotate_x(alpha);
     mat3 r_z = rotate_z(beta);
 
-    vec3 basis_x = normalize(cross(rotate_x(radians(90)) * normal, normal));
+    vec3 basis_x = normalize(cross(rotate_x(radians(-90)) * normal, normal));
     vec3 basis_z = normalize(cross(basis_x, normal));
 
     mat3 to_normal = mat3(basis_x,
@@ -82,9 +82,16 @@ vec3 rotate_vector_normal(vec3 vector, vec3 normal, float alpha, float beta) {
     mat3 from_normal = transpose(to_normal);
     vec3 transformed = from_normal * vector;
 
-    transformed = r_z * r_x * transformed;
+    transformed = r_x * r_z * transformed;
 
-    return to_normal * transformed;
+    transformed.y = abs(transformed.y);
+
+    // return to_normal * r_x * r_z * vec3(0, 1, 0);
+    vec3 rotated = r_x * r_z * transformed;
+    if (rotated.y < 0) {
+        rotated *= -1;
+    }
+    return to_normal * rotated;
     // return vector;
 }
 
@@ -127,12 +134,12 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
         normal = normalize(normal);
         c_direction = reflect_normal(direction, normal);
 
-        float alpha = radians(hash11(state) * spheres[sphere_idx].reflect_angle);
+        float alpha = radians((hash11(state) - 0.5) * 360);
         state = murmur_hash11(state);
-        float beta = radians(hash11(state) * spheres[sphere_idx].reflect_angle);
+        float beta = radians((hash11(state) - 0.5) * spheres[sphere_idx].reflect_angle);
         state = murmur_hash11(state);
         vec2 angle = vec2(cos(alpha), sin(alpha)) * beta;
-        c_direction = rotate_vector_normal(c_direction, normalize(normal), alpha, beta);
+        c_direction = rotate_vector_normal(c_direction, normalize(normal), angle.x, angle.y);
 
         c_origin = collision;
         c_bounces--;
@@ -147,6 +154,7 @@ void main() {
     vec4 old_color = imageLoad(img_old, texelCoord);
     vec4 value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
     vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
+    // vec4 mixed_value = mix(old_color, value, 0.01);
     // vec4 mixed_value = mix(old_color, value, 1);
 
     imageStore(img_old, texelCoord, mixed_value);

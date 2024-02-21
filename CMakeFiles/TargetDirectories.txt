@@ -1,3 +1,0 @@
-/home/aino/Documents/gl_rays/CMakeFiles/gl_rays.dir
-/home/aino/Documents/gl_rays/CMakeFiles/edit_cache.dir
-/home/aino/Documents/gl_rays/CMakeFiles/rebuild_cache.dir

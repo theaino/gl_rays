@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/gl_rays.dir/src/main.cpp.o -o bin/gl_rays  /usr/lib/libOpenGL.so /usr/lib/libGLX.so /usr/lib/libGLU.so -lGLEW -lEGL -lGL -lGLU -lOpenGL -lglfw 

@@ -1,14 +1,15 @@
+// clang-format off
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <GL/glext.h>
+// clang-format on
+
+#include "plane.hpp"
 
 float vertices[] = {
-  -1.0f, -1.0f,
-  -1.0f, 1.0f,
-  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f,
 
-  1.0f, 1.0f,
-  -1.0f, 1.0f,
-  1.0f, -1.0f,
+    1.0f,  1.0f,  -1.0f, 1.0f, 1.0f, -1.0f,
 };
 
 GLuint createPlane() {

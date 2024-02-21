@@ -5,56 +5,37 @@ layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout(rgba32f, binding = 0) uniform image2D img_output;
 
-struct Triangle {
-  vec3 a;
-  float padding0;
-  vec3 b;
-  float padding1;
-  vec3 c;
-  float padding2;
+struct Sphere {
+  vec3 center;
+  float radius;
   vec4 color;
   float source;
   float reflect_angle;
-  float padding3[2];
 };
 
-layout(std430, binding = 2) buffer TriangleBlock {
-  Triangle triangles[];
+layout(std430, binding = 2) buffer SphereBlock {
+  Sphere spheres[];
 };
 
-uniform int triangle_count;
+uniform int sphere_count;
 uniform uint time;
 layout(rgba32f) uniform image2D img_old;
 
 uint murmur_hash11(uint src) {
   const uint M = 0x5bd1e995u;
   uint h = 1190494759u;
-  src *= M;
-  src ^= src >> 24u;
-  src *= M;
-  h *= M;
-  h ^= src;
-  h ^= h >> 13u;
-  h *= M;
-  h ^= h >> 15u;
+  src *= M; src ^= src>>24u; src *= M;
+  h *= M; h ^= src;
+  h ^= h>>13u; h *= M; h ^= h>>15u;
   return h;
 }
 
 uint murmur_hash13(uvec3 src) {
   const uint M = 0x5bd1e995u;
   uint h = 1190494759u;
-  src *= M;
-  src ^= src >> 24u;
-  src *= M;
-  h *= M;
-  h ^= src.x;
-  h *= M;
-  h ^= src.y;
-  h *= M;
-  h ^= src.z;
-  h ^= h >> 13u;
-  h *= M;
-  h ^= h >> 15u;
+  src *= M; src ^= src>>24u; src *= M;
+  h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+  h ^= h>>13u; h *= M; h ^= h>>15u;
   return h;
 }
 
@@ -63,31 +44,13 @@ float hash11(uint src) {
   return uintBitsToFloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
 }
 
-float triangle_line_intersection(vec3 direction, vec3 origin, vec3 a, vec3 b, vec3 c) {
-  // Moller-Trumbore intersection algorithm
-  vec3 e1 = b - a;
-  vec3 e2 = c - a;
-  vec3 h = cross(direction, e2);
-  float a_ = dot(e1, h);
-  if (a_ > -0.00001 && a_ < 0.00001) {
-    return -1;
-  }
-  float f = 1 / a_;
-  vec3 s = origin - a;
-  float u = f * dot(s, h);
-  if (u < 0 || u > 1) {
-    return -1;
-  }
-  vec3 q = cross(s, e1);
-  float v = f * dot(direction, q);
-  if (v < 0 || u + v > 1) {
-    return -1;
-  }
-  float t = f * dot(e2, q);
-  if (t > 0.00001) {
-    return t;
-  }
-  return -1;
+float sphere_line_lambda(vec3 direction, vec3 origin, vec3 center, float radius) {
+  return pow(dot(direction, origin - center), 2) - (dot(origin - center, origin - center) - radius * radius);
+}
+
+float sphere_line_intersection(vec3 direction, vec3 origin, vec3 center, float radius, float lambda) {
+  float distance = -(dot(direction, origin - center) + sqrt(lambda));
+  return distance;
 }
 
 vec3 reflect_normal(vec3 direction, vec3 normal) {
@@ -144,35 +107,36 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
     if (c_bounces == 0) {
       return color / count * (color.a + 0.25);
     }
-    int triangle_idx = -1;
+    int sphere_idx = -1;
     float min_distance = 0;
-    for (int i = 0; i < triangle_count; i++) {
-      float distance = triangle_line_intersection(c_direction, c_origin, triangles[i].a, triangles[i].b, triangles[i].c);
+    for (int i = 0; i < sphere_count; i++) {
+      float lambda = sphere_line_lambda(c_direction, c_origin, spheres[i].center, spheres[i].radius);
+      if (lambda <= 0) {
+        continue;
+      }
+      float distance = sphere_line_intersection(c_direction, c_origin, spheres[i].center, spheres[i].radius, lambda);
       if (distance <= 0) {
         continue;
       }
 
-      if (triangle_idx == -1 || distance < min_distance) {
+      if (sphere_idx == -1 || distance < min_distance) {
         min_distance = distance;
-        triangle_idx = i;
+        sphere_idx = i;
       }
     }
-    if (triangle_idx == -1) {
+    if (sphere_idx == -1) {
       return color / count * (color.a + 0.25);
     }
-    color += vec4(triangles[triangle_idx].color.rgb, triangles[triangle_idx].source);
+    color += vec4(spheres[sphere_idx].color.rgb, spheres[sphere_idx].source);
     vec3 collision = min_distance * direction + origin;
 
-    vec3 normal = cross(triangles[triangle_idx].b - triangles[triangle_idx].a, triangles[triangle_idx].c - triangles[triangle_idx].a);
-    if (dot(normal, c_direction) > 0) {
-      normal *= -1;
-    }
+    vec3 normal = collision - spheres[sphere_idx].center;
     normal = normalize(normal);
     c_direction = reflect_normal(direction, normal);
 
     float alpha = radians((hash11(state) - 0.5) * 360);
     state = murmur_hash11(state);
-    float beta = radians((hash11(state) - 0.5) * triangles[triangle_idx].reflect_angle);
+    float beta = radians((hash11(state) - 0.5) * spheres[sphere_idx].reflect_angle);
     state = murmur_hash11(state);
     vec2 angle = vec2(cos(alpha), sin(alpha)) * beta;
     c_direction = rotate_vector_normal(c_direction, normalize(normal), angle.x, angle.y);
@@ -185,17 +149,15 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
 void main() {
   ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-  //vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
-  //direction = normalize(direction);
-  //vec4 old_color = imageLoad(img_old, texelCoord);
-  //vec4 value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
-  //vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
-  //  vec4 mixed_value = mix(old_color, value, 0.01);
-  //  vec4 mixed_value = mix(old_color, value, 1);
-  //vec4 mixed_value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
+  vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
+  direction = normalize(direction);
+  vec4 old_color = imageLoad(img_old, texelCoord);
+  vec4 value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
+  vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
+  // vec4 mixed_value = mix(old_color, value, 0.01);
+  // vec4 mixed_value = mix(old_color, value, 1);
 
-  vec4 mixed_value = triangles[time].color;
-
-  //imageStore(img_old, texelCoord, mixed_value);
+  imageStore(img_old, texelCoord, mixed_value);
   imageStore(img_output, texelCoord, mixed_value);
 }
+

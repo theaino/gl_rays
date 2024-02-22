@@ -9,7 +9,7 @@ struct Triangle {
   vec3 a;
   vec3 b;
   vec3 c;
-  vec4 color;
+  vec3 color;
   float source;
   float reflect_angle;
 };
@@ -18,8 +18,13 @@ layout(std430, binding = 2) buffer TriangleBlock {
   Triangle triangles[];
 };
 
+uniform uint width;
+uniform uint height;
 uniform int triangle_count;
 uniform uint time;
+uniform vec3 camera_position;
+uniform float blending;
+
 layout(rgba32f) uniform image2D img_old;
 
 uint murmur_hash11(uint src) {
@@ -118,20 +123,25 @@ vec3 rotate_vector_normal(vec3 vector, vec3 normal, float alpha, float beta) {
   r_y = rotate_y(beta) * r_y;
   r_y = to_vector * r_y;
 
+  if (dot(r_y, normal) < 0) {
+    r_y *= -1;
+  }
+
   return r_y;
 }
 
-vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
+vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
   uint state = murmur_hash13(uvec3(gl_GlobalInvocationID.xy, time));
   vec3 c_direction = direction;
   vec3 c_origin = origin;
   int c_bounces = bounces;
-  vec4 color = vec4(0);
+  vec3 color = vec3(0);
+  vec3 color_multiplier = vec3(1);
 
   while (true) {
     int count = bounces - c_bounces + 1;
     if (c_bounces == 0) {
-      return color / count * (color.a + 0.25);
+      return color;
     }
     int triangle_idx = -1;
     float min_distance = 0;
@@ -147,9 +157,12 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
       }
     }
     if (triangle_idx == -1) {
-      return color / count * (color.a + 0.25);
+      return color;
     }
-    color += vec4(triangles[triangle_idx].color.rgb, triangles[triangle_idx].source);
+    color_multiplier *= triangles[triangle_idx].color;
+    vec3 source_color = color_multiplier * triangles[triangle_idx].source;
+    color = vec3(max(source_color.x, color.x), max(source_color.y, color.y), max(source_color.z, color.z));
+
     vec3 collision = min_distance * direction + origin;
 
     vec3 normal = cross(triangles[triangle_idx].b - triangles[triangle_idx].a, triangles[triangle_idx].c - triangles[triangle_idx].a);
@@ -158,6 +171,8 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
     }
     normal = normalize(normal);
     c_direction = reflect_normal(direction, normal);
+
+    color_multiplier *= dot(c_direction, normal);
 
     float alpha = radians((hash11(state) - 0.5) * triangles[triangle_idx].reflect_angle);
     state = murmur_hash11(state);
@@ -173,14 +188,18 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
 void main() {
   ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-  vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
+  uint size = min(width, height);
+
+  float x = float(texelCoord.x) - float(width) / 2;
+  x /= size / 2;
+  float y = float(texelCoord.y) - float(height) / 2;
+  y /= size / 2;
+
+  vec3 direction = vec3(x, y, -1);
   direction = normalize(direction);
   vec4 old_color = imageLoad(img_old, texelCoord);
-  vec4 value = calculate_color(direction, vec3(0, 0, -5), MAX_BOUNCES);
-  vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
-  //  vec4 mixed_value = mix(old_color, value, 0.01);
-  //  vec4 mixed_value = mix(old_color, value, 1);
-  //vec4 mixed_value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
+  vec3 value = calculate_color(direction, camera_position, MAX_BOUNCES);
+  vec4 mixed_value = mix(old_color, vec4(value, -1), blending);
 
   imageStore(img_old, texelCoord, mixed_value);
   imageStore(img_output, texelCoord, mixed_value);

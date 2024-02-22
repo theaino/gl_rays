@@ -13,7 +13,7 @@ typedef struct triangle {
   uint32_t v0;
   uint32_t v1;
   uint32_t v2;
-  glm::vec4 color;
+  glm::vec3 color;
   float source;
   float reflect_angle;
 } t_triangle;
@@ -22,7 +22,7 @@ typedef struct shader_triangle {
   alignas(16) glm::vec3 v0;
   alignas(16) glm::vec3 v1;
   alignas(16) glm::vec3 v2;
-  alignas(16) glm::vec4 color;
+  alignas(16) glm::vec3 color;
   float source;
   float reflect_angle;
 } t_shader_triangle;

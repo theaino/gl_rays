@@ -45,7 +45,7 @@ int Window::init() {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-  window = glfwCreateWindow(512, 512, "rays", NULL, NULL);
+  window = glfwCreateWindow(width, height, "rays", NULL, NULL);
   if (window == NULL) {
     std::cerr << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
@@ -86,10 +86,6 @@ void Window::startDraw() {
 }
 
 void Window::endDraw() {
-  ImGui::Begin("Demo window");
-  ImGui::Button("Hello!");
-  ImGui::End();
-
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

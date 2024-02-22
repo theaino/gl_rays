@@ -5,6 +5,7 @@
 // clang-format on
 #include <GLFW/glfw3.h>
 
+#include "imgui.h"
 #include "mesh/importer.hpp"
 #include "mesh/mesh.hpp"
 #include "shader/plane.hpp"
@@ -43,6 +44,9 @@ int main(int argc, char **argv) {
   GLuint ssbo = mesh->generateSSBO();
   window.logErrors();
 
+  glm::vec3 camera_position = glm::vec3(0, 0, 5);
+  float blending = 0.01f;
+
   while (!window.shouldClose()) {
     window.startDraw();
 
@@ -51,8 +55,13 @@ int main(int argc, char **argv) {
     glUseProgram(compute_program);
     glUniform1i(glGetUniformLocation(compute_program, "triangle_count"),
                 mesh->triangleCount());
+    glUniform1ui(glGetUniformLocation(compute_program, "width"), WIDTH);
+    glUniform1ui(glGetUniformLocation(compute_program, "height"), HEIGHT);
     glUniform1ui(glGetUniformLocation(compute_program, "time"), frame_count);
     glUniform1i(glGetUniformLocation(compute_program, "img_old"), 1);
+    glUniform3f(glGetUniformLocation(compute_program, "camera_position"),
+                camera_position.x, camera_position.y, camera_position.z);
+    glUniform1f(glGetUniformLocation(compute_program, "blending"), blending);
 
     glDispatchCompute((unsigned int)WIDTH / 32, (unsigned int)HEIGHT / 32, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
@@ -65,6 +74,11 @@ int main(int argc, char **argv) {
 
     glBindVertexArray(plane);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    ImGui::Begin("Renderer");
+    ImGui::SliderFloat3("position", &camera_position.x, -10, 10);
+    ImGui::SliderFloat("image blending", &blending, 0, 0.1);
+    ImGui::End();
 
     window.endDraw();
 

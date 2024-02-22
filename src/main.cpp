@@ -38,13 +38,13 @@ int main(int argc, char **argv) {
   unsigned long frame_count = 0;
 
   MeshImporter importer = MeshImporter();
-  importer.loadWavefront("models/shape.mobj");
+  importer.loadWavefront("models/shape_ape.mobj");
   Mesh *mesh = importer.getMesh();
   GLuint ssbo = mesh->generateSSBO();
   window.logErrors();
 
   while (!window.shouldClose()) {
-    window.prepareDraw();
+    window.startDraw();
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo);
 
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     glBindVertexArray(plane);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    glfwPollEvents();
+    window.endDraw();
 
     frame_count++;
   }

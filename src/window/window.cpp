@@ -4,6 +4,11 @@
 #include <GL/glext.h>
 // clang-format on
 #include <GLFW/glfw3.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_stdlib.h>
 #include <iostream>
 
 #include "window.hpp"
@@ -58,11 +63,35 @@ int Window::init() {
     return -1;
   }
 
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init("#version 460");
+
+  ImGui::StyleColorsDark();
+
   return 0;
 }
 
-void Window::prepareDraw() {
+void Window::startDraw() {
   glfwSwapBuffers(window);
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+}
+
+void Window::endDraw() {
+  ImGui::Begin("Demo window");
+  ImGui::Button("Hello!");
+  ImGui::End();
+
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+  glfwPollEvents();
 }

@@ -16,7 +16,8 @@ public:
   bool shouldClose();
   void logErrors();
   int init();
-  void prepareDraw();
+  void startDraw();
+  void endDraw();
 
 private:
   GLFWwindow *window;

@@ -12,11 +12,11 @@
 #include "shader/texture.hpp"
 #include "window/window.hpp"
 
-#define TEXTURE_WIDTH 512
-#define TEXTURE_HEIGHT 512
+#define WIDTH 512
+#define HEIGHT 512
 
 int main(int argc, char **argv) {
-  Window window = Window();
+  Window window = Window(WIDTH, HEIGHT);
   if (window.init() != 0) {
     return -1;
   }
@@ -31,9 +31,8 @@ int main(int argc, char **argv) {
 
   GLuint plane = createPlane();
 
-  GLuint texture = createTexture(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_TEXTURE0);
-  GLuint old_texture =
-      createTexture(TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_TEXTURE1);
+  GLuint texture = createTexture(WIDTH, HEIGHT, GL_TEXTURE0);
+  GLuint old_texture = createTexture(WIDTH, HEIGHT, GL_TEXTURE1);
   window.logErrors();
 
   unsigned long frame_count = 0;
@@ -55,8 +54,7 @@ int main(int argc, char **argv) {
     glUniform1ui(glGetUniformLocation(compute_program, "time"), frame_count);
     glUniform1i(glGetUniformLocation(compute_program, "img_old"), 1);
 
-    glDispatchCompute((unsigned int)TEXTURE_WIDTH / 32,
-                      (unsigned int)TEXTURE_HEIGHT / 32, 1);
+    glDispatchCompute((unsigned int)WIDTH / 32, (unsigned int)HEIGHT / 32, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     glUseProgram(program);

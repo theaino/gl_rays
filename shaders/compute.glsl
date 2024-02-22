@@ -7,15 +7,11 @@ layout(rgba32f, binding = 0) uniform image2D img_output;
 
 struct Triangle {
   vec3 a;
-  float padding0;
   vec3 b;
-  float padding1;
   vec3 c;
-  float padding2;
   vec4 color;
   float source;
   float reflect_angle;
-  float padding3[2];
 };
 
 layout(std430, binding = 2) buffer TriangleBlock {
@@ -100,6 +96,12 @@ mat3 rotate_x(float angle) {
               0, sin(angle), cos(angle));
 }
 
+mat3 rotate_y(float angle) {
+  return mat3(cos(angle), 0, sin(angle),
+              0, 1, 0,
+              -sin(angle), 0, cos(angle));
+}
+
 mat3 rotate_z(float angle) {
   return mat3(cos(angle), -sin(angle), 0,
               sin(angle), cos(angle), 0,
@@ -107,29 +109,16 @@ mat3 rotate_z(float angle) {
 }
 
 vec3 rotate_vector_normal(vec3 vector, vec3 normal, float alpha, float beta) {
-  mat3 r_x = rotate_x(alpha);
-  mat3 r_z = rotate_z(beta);
+  vec3 basis_y = normalize(vector);
+  vec3 basis_x = normalize(cross(normal, basis_y));
+  vec3 basis_z = normalize(cross(basis_x, basis_y));
+  mat3 to_vector = mat3(basis_x, basis_y, basis_z);
 
-  vec3 basis_x = normalize(cross(rotate_x(radians(-90)) * normal, normal));
-  vec3 basis_z = normalize(cross(basis_x, normal));
+  vec3 r_y = vec3(0, cos(alpha), sin(alpha));
+  r_y = rotate_y(beta) * r_y;
+  r_y = to_vector * r_y;
 
-  mat3 to_normal = mat3(basis_x,
-                        normal,
-                        basis_z);
-  mat3 from_normal = transpose(to_normal);
-  vec3 transformed = from_normal * vector;
-
-  transformed = r_x * r_z * transformed;
-
-  transformed.y = abs(transformed.y);
-
-  // return to_normal * r_x * r_z * vec3(0, 1, 0);
-  vec3 rotated = r_x * r_z * transformed;
-  if (rotated.y < 0) {
-    rotated *= -1;
-  }
-  return to_normal * rotated;
-  // return vector;
+  return r_y;
 }
 
 vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
@@ -170,12 +159,11 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
     normal = normalize(normal);
     c_direction = reflect_normal(direction, normal);
 
-    float alpha = radians((hash11(state) - 0.5) * 360);
+    float alpha = radians((hash11(state) - 0.5) * triangles[triangle_idx].reflect_angle);
     state = murmur_hash11(state);
-    float beta = radians((hash11(state) - 0.5) * triangles[triangle_idx].reflect_angle);
+    float beta = radians((hash11(state) - 0.5) * 360);
     state = murmur_hash11(state);
-    vec2 angle = vec2(cos(alpha), sin(alpha)) * beta;
-    c_direction = rotate_vector_normal(c_direction, normalize(normal), angle.x, angle.y);
+    c_direction = rotate_vector_normal(c_direction, normalize(normal), alpha, beta);
 
     c_origin = collision;
     c_bounces--;
@@ -185,17 +173,15 @@ vec4 calculate_color(vec3 direction, vec3 origin, int bounces) {
 void main() {
   ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-  //vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
-  //direction = normalize(direction);
-  //vec4 old_color = imageLoad(img_old, texelCoord);
-  //vec4 value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
-  //vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
+  vec3 direction = vec3(float(texelCoord.x) / 256 - 1, float(texelCoord.y) / 256 - 1, 1);
+  direction = normalize(direction);
+  vec4 old_color = imageLoad(img_old, texelCoord);
+  vec4 value = calculate_color(direction, vec3(0, 0, -5), MAX_BOUNCES);
+  vec4 mixed_value = mix(old_color, value, 1 / float(time + 1));
   //  vec4 mixed_value = mix(old_color, value, 0.01);
   //  vec4 mixed_value = mix(old_color, value, 1);
   //vec4 mixed_value = calculate_color(direction, vec3(0, 0, 0), MAX_BOUNCES);
 
-  vec4 mixed_value = triangles[time].color;
-
-  //imageStore(img_old, texelCoord, mixed_value);
+  imageStore(img_old, texelCoord, mixed_value);
   imageStore(img_output, texelCoord, mixed_value);
 }

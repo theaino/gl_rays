@@ -8,13 +8,18 @@
 
 #include "window.hpp"
 
-Window::Window(){};
+Window::Window(int width, int height) {
+  this->width = width;
+  this->height = height;
+}
 
 Window::~Window() {
   glfwDestroyWindow(window);
   glfwTerminate();
 }
 
+int Window::getWidth() { return width; }
+int Window::getHeight() { return height; }
 bool Window::shouldClose() { return glfwWindowShouldClose(window); }
 
 void Window::logErrors() {

@@ -9,8 +9,10 @@
 
 class Window {
 public:
-  Window();
+  Window(int width, int height);
   ~Window();
+  int getWidth();
+  int getHeight();
   bool shouldClose();
   void logErrors();
   int init();
@@ -18,4 +20,6 @@ public:
 
 private:
   GLFWwindow *window;
+  int width;
+  int height;
 };

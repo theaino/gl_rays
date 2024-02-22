@@ -58,8 +58,10 @@ void MeshImporter::loadWavefront(std::string path) {
       uint32_t v0 = std::stoul(a_str) - 1;
       uint32_t v1 = std::stoul(b_str) - 1;
       uint32_t v2 = std::stoul(c_str) - 1;
-      mesh.addTriangle({v0, v1, v2, c_color[0], c_color[1], c_color[2],
-                        c_color[3], c_source, c_reflect_angle});
+      mesh.addTriangle(
+          {v0, v1, v2,
+           glm::vec4(c_color[0], c_color[1], c_color[2], c_color[3]), c_source,
+           c_reflect_angle});
     }
   }
 

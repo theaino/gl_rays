@@ -80,7 +80,8 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
     color_multiplier *= dot(c_direction, normal);
 
     // Scatter reflected ray
-    float alpha = radians((random() - 0.5) * triangles[triangle_idx].reflect_angle);
+    float alpha = random();
+    alpha = radians((alpha * alpha - 0.5) * triangles[triangle_idx].reflect_angle);
     float beta = radians((random() - 0.5) * 360);
     c_direction = scatter(c_direction, normal, alpha, beta);
     if (dot(c_direction, normal) < 0) {

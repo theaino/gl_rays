@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "mesh/importer.hpp"
 #include "mesh/mesh.hpp"
+#include "shader/loader.hpp"
 #include "shader/plane.hpp"
 #include "shader/shader.hpp"
 #include "shader/texture.hpp"
@@ -22,12 +23,17 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  GLuint vertex_shader = loadShader("shaders/vertex.glsl", GL_VERTEX_SHADER);
+  ShaderLoader loader = ShaderLoader();
+  loader.addIncludePath("shaders/");
+
+  GLuint vertex_shader =
+      createShader(loader.read("plane/vertex.glsl"), GL_VERTEX_SHADER);
   GLuint fragment_shader =
-      loadShader("shaders/fragment.glsl", GL_FRAGMENT_SHADER);
+      createShader(loader.read("plane/fragment.glsl"), GL_FRAGMENT_SHADER);
   GLuint program = createProgram(2, vertex_shader, fragment_shader);
 
-  GLuint compute_shader = loadShader("shaders/compute.glsl", GL_COMPUTE_SHADER);
+  GLuint compute_shader =
+      createShader(loader.read("render/compute.glsl"), GL_COMPUTE_SHADER);
   GLuint compute_program = createProgram(1, compute_shader);
 
   GLuint plane = createPlane();

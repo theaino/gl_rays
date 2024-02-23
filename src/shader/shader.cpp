@@ -3,7 +3,6 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 // clang-format on
-#include <fstream>
 #include <iostream>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -12,30 +11,8 @@
 
 #include "shader.hpp"
 
-std::string readShader(std::string path) {
-  std::string content;
-  std::ifstream file;
-  file.open(path);
-
-  if (!file.is_open()) {
-    std::cerr << "Could not read file " << path << std::endl;
-    return "";
-  }
-
-  std::string line = "";
-  while (!file.eof()) {
-    std::getline(file, line);
-    content.append(line + "\n");
-  }
-  file.close();
-
-  return content;
-}
-
-GLuint loadShader(std::string path, GLenum shader_type) {
-
+GLuint createShader(std::string content, GLenum shader_type) {
   GLuint shader = glCreateShader(shader_type);
-  std::string content = readShader(path);
   const char *source = content.c_str();
   glShaderSource(shader, 1, &source, NULL);
   glCompileShader(shader);
@@ -45,12 +22,14 @@ GLuint loadShader(std::string path, GLenum shader_type) {
   glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
   if (!success) {
     glGetShaderInfoLog(shader, 512, NULL, infoLog);
-    std::cout << "Failed to compile " << path << ": " << infoLog << std::endl;
+    std::cout << "Failed to compile " << shader_type << ": " << infoLog
+              << std::endl;
     exit(1);
   };
 
   return shader;
 }
+
 GLuint createProgram(int n, ...) {
   GLuint program = glCreateProgram();
 

@@ -11,3 +11,8 @@ CTestTestfile.cmake
 _deps
 
 /bin/
+/build/
+/.cmake/
+/.cache/
+
+imgui.ini

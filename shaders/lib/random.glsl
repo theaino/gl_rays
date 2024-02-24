@@ -1,7 +1,7 @@
 #ifndef RANDOM_H_
 #define RANDOM_H_
 
-uint state;
+uint random_state;
 
 uint murmur_hash11(uint src) {
   const uint M = 0x5bd1e995u;
@@ -41,12 +41,12 @@ float hash11(uint src) {
 }
 
 void init_random(uvec3 seed) {
-  state = murmur_hash13(seed);
+  random_state = murmur_hash13(seed);
 }
 
 float random() {
-  float value = hash11(state);
-  state = murmur_hash11(state);
+  float value = hash11(random_state);
+  random_state = murmur_hash11(random_state);
   return value;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 // clang-format off
+#include "buffers/ssbo.hpp"
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -34,7 +35,7 @@ public:
   void addTriangle(t_triangle triangle);
   int triangleCount();
   t_shader_triangle *getShaderTriangles();
-  GLuint generateSSBO();
+  SSBO generateSSBO();
 
 private:
   std::vector<glm::vec3> vertices;

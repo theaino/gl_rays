@@ -16,7 +16,7 @@ public:
   bool shouldClose();
   void logErrors();
   int init();
-  void startDraw();
+  void beginDraw();
   void endDraw();
 
 private:

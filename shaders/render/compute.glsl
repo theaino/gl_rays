@@ -1,5 +1,4 @@
 #version 460 core
-#define MAX_BOUNCES 20
 #include lib/raymath.glsl
 #include lib/random.glsl
 
@@ -20,15 +19,24 @@ layout(std430, binding = 2) buffer TriangleBlock {
   Triangle triangles[];
 };
 
-uniform uint width;
-uniform uint height;
-uniform int triangle_count;
-uniform uint time;
-uniform vec3 camera_position;
-uniform float blending;
+layout(std140, binding = 3) uniform CameraSettings {
+  vec3 position;
+  vec2 rotation;
+  float fov;
+} camera;
+
+layout(std140, binding = 4) uniform RenderSettings {
+  float blending;
+  int max_bounces;
+} render;
+
+layout(std140, binding = 5) uniform StateSettings {
+  int width;
+  int height;
+  int time;
+} state;
 
 layout(rgba32f) uniform image2D img_old;
-
 
 vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
   vec3 c_direction = direction;
@@ -46,7 +54,7 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
     // Get intersecting triangle
     int triangle_idx = -1;
     float min_distance = 0;
-    for (int i = 0; i < triangle_count; i++) {
+    for (int i = 0; i < triangles.length(); i++) {
       float distance = triangle_line_intersection(c_direction, c_origin, triangles[i].a, triangles[i].b, triangles[i].c);
       if (distance <= 0) {
         continue;
@@ -73,7 +81,6 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
     if (dot(normal, c_direction) > 0) {
       normal *= -1;
     }
-
     c_direction = reflect(direction, normal);
 
     // Darken light based on angle
@@ -95,21 +102,30 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
 
 void main() {
   ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
-  init_random(uvec3(gl_GlobalInvocationID.xy, time));
+  init_random(uvec3(gl_GlobalInvocationID.xy, state.time));
 
   // Calculate direction vector
-  uint size = min(width, height);
-  float x = float(texelCoord.x) - float(width) / 2;
+  uint size = min(state.width, state.height);
+  float x = float(texelCoord.x) - float(state.width) / 2;
   x /= size / 2;
-  float y = float(texelCoord.y) - float(height) / 2;
+  float y = float(texelCoord.y) - float(state.height) / 2;
   y /= size / 2;
-  vec3 direction = vec3(x, y, -1);
+  vec3 direction = vec3(x * tan(camera.fov), y * tan(camera.fov), -1);
   direction = normalize(direction);
+  mat3 rotation_x = mat3(1, 0, 0,
+                        0, cos(camera.rotation.x), -sin(camera.rotation.x),
+                        0, sin(camera.rotation.x), cos(camera.rotation.x));
+
+  mat3 rotation_y = mat3(cos(camera.rotation.y), 0, sin(camera.rotation.y),
+                        0, 1, 0,
+                        -sin(camera.rotation.y), 0, cos(camera.rotation.y));
+  direction = rotation_x * direction;
+  direction = rotation_y * direction;
 
   // Mix color with old image generated
   vec4 old_color = imageLoad(img_old, texelCoord);
-  vec3 value = calculate_color(direction, camera_position, MAX_BOUNCES);
-  vec4 mixed_value = mix(old_color, vec4(value, -1), blending);
+  vec3 value = calculate_color(direction, camera.position, render.max_bounces);
+  vec4 mixed_value = mix(old_color, vec4(value, -1), render.blending);
 
   imageStore(img_old, texelCoord, mixed_value);
   imageStore(img_output, texelCoord, mixed_value);

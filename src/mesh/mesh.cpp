@@ -5,6 +5,7 @@
 // clang-format on
 
 #include "mesh.hpp"
+#include "buffers/ssbo.hpp"
 #include <glm/vec3.hpp>
 
 Mesh::Mesh() {}
@@ -29,13 +30,10 @@ t_shader_triangle *Mesh::getShaderTriangles() {
   return shader_triangles;
 }
 
-GLuint Mesh::generateSSBO() {
+SSBO Mesh::generateSSBO() {
   t_shader_triangle *shader_triangles = getShaderTriangles();
-  GLuint ssbo;
-  glGenBuffers(1, &ssbo);
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-  glBufferData(GL_SHADER_STORAGE_BUFFER,
-               sizeof(t_shader_triangle) * triangleCount(), shader_triangles,
-               GL_STATIC_DRAW);
+  SSBO ssbo;
+  ssbo.bind();
+  ssbo.setData(shader_triangles, sizeof(t_shader_triangle) * triangleCount());
   return ssbo;
 }

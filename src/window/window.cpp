@@ -7,10 +7,9 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
-#include <imgui_internal.h>
-#include <imgui_stdlib.h>
 #include <iostream>
 
+#include "imgui_style.hpp"
 #include "window.hpp"
 
 Window::Window(int width, int height) {
@@ -19,6 +18,10 @@ Window::Window(int width, int height) {
 }
 
 Window::~Window() {
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
   glfwDestroyWindow(window);
   glfwTerminate();
 }
@@ -65,17 +68,19 @@ int Window::init() {
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+
   ImGuiIO &io = ImGui::GetIO();
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 460");
 
-  ImGui::StyleColorsDark();
+  SetupImGuiFont(&io);
+  SetupImGuiStyle();
 
   return 0;
 }
 
-void Window::startDraw() {
+void Window::beginDraw() {
   glfwSwapBuffers(window);
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

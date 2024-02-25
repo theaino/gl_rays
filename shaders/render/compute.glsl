@@ -4,7 +4,7 @@
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(rgba32f, binding = 0) uniform image2D img_output;
+layout(rgba32f, binding = 0) uniform image2D tex;
 
 struct Triangle {
   vec3 a;
@@ -35,8 +35,6 @@ layout(std140, binding = 5) uniform StateSettings {
   int height;
   int time;
 } state;
-
-layout(rgba32f) uniform image2D img_old;
 
 vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
   vec3 c_direction = direction;
@@ -123,10 +121,9 @@ void main() {
   direction = rotation_y * direction;
 
   // Mix color with old image generated
-  vec4 old_color = imageLoad(img_old, texel_coord);
-  vec3 value = calculate_color(direction, camera.position, render.max_bounces);
-  vec4 mixed_value = mix(old_color, vec4(value, -1), 1.0f / render.blending);
+  vec4 old_color = imageLoad(tex, texel_coord);
+  vec3 color = calculate_color(direction, camera.position, render.max_bounces);
+  vec4 mixed_color = mix(old_color, vec4(color, 1), 1.0f / render.blending);
 
-  imageStore(img_old, texel_coord, mixed_value);
-  imageStore(img_output, texel_coord, mixed_value);
+  imageStore(tex, texel_coord, mixed_color);
 }

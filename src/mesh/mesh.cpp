@@ -30,7 +30,7 @@ t_shader_triangle *Mesh::getShaderTriangles() {
   return shader_triangles;
 }
 
-void Mesh::updateSSBO(SSBO &ssbo) {
+void Mesh::updateSSBO(SSBO *ssbo) {
   t_shader_triangle *shader_triangles = getShaderTriangles();
-  ssbo.setData(shader_triangles, sizeof(t_shader_triangle) * triangleCount());
+  ssbo->setData(shader_triangles, sizeof(t_shader_triangle) * triangleCount());
 }

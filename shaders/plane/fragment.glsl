@@ -1,16 +1,13 @@
 #version 460 core
 
-#define SUBPIXELS_X 2
-#define SUBPIXELS_Y 2
-
 out vec4 FragColor;
 
-in vec2 TexCoords;
+in vec2 tex_coord;
 
 uniform sampler2D tex;
 
 void main() {
-  vec3 color = texture(tex, TexCoords).rgb;
+  vec3 color = texture(tex, tex_coord).rgb;
   FragColor = vec4(color, 1.0);
 }
 

@@ -12,9 +12,10 @@
 #include "imgui_style.hpp"
 #include "window.hpp"
 
-Window::Window(int width, int height) {
+Window::Window(int width, int height, std::string title) {
   this->width = width;
   this->height = height;
+  this->title = title;
 }
 
 Window::~Window() {
@@ -26,8 +27,20 @@ Window::~Window() {
   glfwTerminate();
 }
 
-int Window::getWidth() { return width; }
-int Window::getHeight() { return height; }
+int Window::getWidth() {
+  getSize(&width, &height);
+  return width;
+}
+
+int Window::getHeight() {
+  getSize(&width, &height);
+  return height;
+}
+
+void Window::getSize(int *width, int *height) {
+  glfwGetWindowSize(window, width, height);
+}
+
 bool Window::shouldClose() { return glfwWindowShouldClose(window); }
 
 void Window::logErrors() {
@@ -39,16 +52,16 @@ void Window::logErrors() {
 
 int Window::init() {
   if (!glfwInit()) {
-    std::cerr << "Failed to initialize GLFW" << std::endl;
+    std::cerr << "to initialize GLFW" << std::endl;
     return -1;
   }
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-  window = glfwCreateWindow(width, height, "rays", NULL, NULL);
+  window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
   if (window == NULL) {
     std::cerr << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
@@ -80,7 +93,7 @@ int Window::init() {
   return 0;
 }
 
-void Window::beginDraw() {
+void Window::beginFrame() {
   glfwSwapBuffers(window);
   glClearColor(0, 0, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -90,7 +103,7 @@ void Window::beginDraw() {
   ImGui::NewFrame();
 }
 
-void Window::endDraw() {
+void Window::endFrame() {
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

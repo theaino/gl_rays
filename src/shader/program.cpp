@@ -14,7 +14,6 @@ Program::Program(std::vector<Shader> shaders) {
   for (Shader shader : shaders) {
     glAttachShader(id, shader.getID());
   }
-  int success;
 }
 
 int Program::link() {

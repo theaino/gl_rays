@@ -35,7 +35,7 @@ public:
   void addTriangle(t_triangle triangle);
   int triangleCount();
   t_shader_triangle *getShaderTriangles();
-  void updateSSBO(SSBO &ssbo);
+  void updateSSBO(SSBO *ssbo);
 
 private:
   std::vector<glm::vec3> vertices;

@@ -11,12 +11,15 @@ Buffer::Buffer(GLenum type, GLenum usage) {
   this->usage = usage;
   glGenBuffers(1, &id);
 }
+
 Buffer::~Buffer() { glDeleteBuffers(1, &id); }
 void Buffer::bind() { glBindBuffer(type, id); }
+
 void Buffer::bind(GLuint index) {
   bind();
   glBindBufferBase(type, index, id);
 }
+
 void Buffer::unbind() { glBindBuffer(type, 0); }
 
 void Buffer::setData(void *data, size_t size) {
@@ -34,6 +37,7 @@ void *Buffer::map() {
   bind();
   return glMapBuffer(type, GL_READ_WRITE);
 }
+
 void Buffer::unmap() { glUnmapBuffer(type); }
 GLuint Buffer::getID() { return id; }
 GLuint Buffer::getSize() { return size; }

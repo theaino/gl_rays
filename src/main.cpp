@@ -79,17 +79,21 @@ int main(int argc, char **argv) {
   CameraSettings camera;
   StateSettings state(WIDTH, HEIGHT);
 
+  glUniform1i(glGetUniformLocation(draw_program.getID(), "tex"), 0);
+  glUniform1i(glGetUniformLocation(compute_program.getID(), "img_old"), 1);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  ssbo.bind(2);
+
   // Main loop
   while (!window.shouldClose()) {
     window.beginDraw();
 
-    ssbo.bind(2);
-
     compute_program.use();
 
     // Set uniforms
-    glUniform1i(glGetUniformLocation(compute_program.getID(), "img_old"), 1);
-
     camera.updateUBO();
     camera.ubo.bindUniformBlock(compute_program.getID(), "CameraSettings", 3);
 
@@ -105,10 +109,6 @@ int main(int argc, char **argv) {
 
     // Draw result to screen
     draw_program.use();
-
-    glUniform1i(glGetUniformLocation(draw_program.getID(), "tex"), 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
 
     glBindVertexArray(plane);
     glDrawArrays(GL_TRIANGLES, 0, 6);

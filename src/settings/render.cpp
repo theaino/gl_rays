@@ -2,12 +2,12 @@
 #include "imgui.h"
 
 RenderSettings::RenderSettings() : ubo(GL_DYNAMIC_DRAW) {
-  settings = {.blending = 0.01, .max_bounces = 10};
+  settings = {.blending = 100, .max_bounces = 10};
   ubo.setData(&settings, sizeof(t_render_settings));
 }
 
 void RenderSettings::drawImGui() {
-  ImGui::SliderFloat("Blending", &settings.blending, 0, 1);
+  ImGui::InputInt("Blending", &settings.blending);
   ImGui::InputInt("Max Bounces", &settings.max_bounces);
 }
 

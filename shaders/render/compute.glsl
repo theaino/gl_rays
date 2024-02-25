@@ -26,7 +26,7 @@ layout(std140, binding = 3) uniform CameraSettings {
 } camera;
 
 layout(std140, binding = 4) uniform RenderSettings {
-  float blending;
+  int blending;
   int max_bounces;
 } render;
 
@@ -101,14 +101,14 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
 }
 
 void main() {
-  ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
-  init_random(uvec3(gl_GlobalInvocationID.xy, state.time));
+  ivec2 texel_coord = ivec2(gl_GlobalInvocationID.xy);
+  init_random(uvec3(texel_coord, state.time));
 
   // Calculate direction vector
   uint size = min(state.width, state.height);
-  float x = float(texelCoord.x) - float(state.width) / 2;
+  float x = float(texel_coord.x) - float(state.width) / 2;
   x /= size / 2;
-  float y = float(texelCoord.y) - float(state.height) / 2;
+  float y = float(texel_coord.y) - float(state.height) / 2;
   y /= size / 2;
   vec3 direction = vec3(x * tan(camera.fov), y * tan(camera.fov), -1);
   direction = normalize(direction);
@@ -123,10 +123,10 @@ void main() {
   direction = rotation_y * direction;
 
   // Mix color with old image generated
-  vec4 old_color = imageLoad(img_old, texelCoord);
+  vec4 old_color = imageLoad(img_old, texel_coord);
   vec3 value = calculate_color(direction, camera.position, render.max_bounces);
-  vec4 mixed_value = mix(old_color, vec4(value, -1), render.blending);
+  vec4 mixed_value = mix(old_color, vec4(value, -1), 1.0f / render.blending);
 
-  imageStore(img_old, texelCoord, mixed_value);
-  imageStore(img_output, texelCoord, mixed_value);
+  imageStore(img_old, texel_coord, mixed_value);
+  imageStore(img_output, texel_coord, mixed_value);
 }

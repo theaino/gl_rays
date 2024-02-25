@@ -3,8 +3,8 @@
 #include "buffers/ubo.hpp"
 
 typedef struct render_settings {
-  float blending;
-  GLint max_bounces;
+  int blending;
+  int max_bounces;
 } t_render_settings;
 
 class RenderSettings {

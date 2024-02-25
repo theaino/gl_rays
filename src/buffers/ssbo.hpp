@@ -10,5 +10,5 @@
 
 class SSBO : public Buffer {
 public:
-  SSBO();
+  SSBO(GLenum usage);
 };

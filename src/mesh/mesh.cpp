@@ -3,10 +3,10 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 // clang-format on
-
-#include "mesh.hpp"
-#include "buffers/ssbo.hpp"
 #include <glm/vec3.hpp>
+
+#include "buffers/ssbo.hpp"
+#include "mesh.hpp"
 
 Mesh::Mesh() {}
 
@@ -30,10 +30,7 @@ t_shader_triangle *Mesh::getShaderTriangles() {
   return shader_triangles;
 }
 
-SSBO Mesh::generateSSBO() {
+void Mesh::updateSSBO(SSBO &ssbo) {
   t_shader_triangle *shader_triangles = getShaderTriangles();
-  SSBO ssbo;
-  ssbo.bind();
   ssbo.setData(shader_triangles, sizeof(t_shader_triangle) * triangleCount());
-  return ssbo;
 }

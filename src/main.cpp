@@ -5,6 +5,8 @@
 // clang-format on
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <iostream>
+#include <tinyfiledialogs.h>
 
 #include "buffers/ssbo.hpp"
 #include "imgui.h"
@@ -20,8 +22,8 @@
 #include "shader/shader.hpp"
 #include "window/window.hpp"
 
-#define WIDTH 800
-#define HEIGHT 450
+#define WIDTH 1000
+#define HEIGHT 800
 
 int main(int argc, char **argv) {
   // Setup window
@@ -72,7 +74,8 @@ int main(int argc, char **argv) {
   MeshImporter importer = MeshImporter();
   importer.loadWavefront("models/shape_ape.mobj");
   Mesh *mesh = importer.getMesh();
-  SSBO ssbo = mesh->generateSSBO();
+  SSBO ssbo(GL_DYNAMIC_DRAW);
+  mesh->updateSSBO(ssbo);
 
   // Settings (defaults)
   RenderSettings render;
@@ -121,6 +124,23 @@ int main(int argc, char **argv) {
     ImGui::Begin("Render");
     render.drawImGui();
     ImGui::End();
+
+    if (ImGui::BeginMainMenuBar()) {
+      if (ImGui::BeginMenu("File")) {
+        if (ImGui::MenuItem("Open")) {
+          const char *path = tinyfd_openFileDialog(
+              "Open a file", "", 0, nullptr, "Wavefront OBJ files", 0);
+          if (path != nullptr) {
+            importer = MeshImporter();
+            importer.loadWavefront(std::string(path));
+            mesh = importer.getMesh();
+            mesh->updateSSBO(ssbo);
+          }
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMainMenuBar();
+    }
 
     window.endDraw();
   }

@@ -6,4 +6,4 @@
 
 #include "ssbo.hpp"
 
-SSBO::SSBO() : Buffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_READ) {}
+SSBO::SSBO(GLenum usage) : Buffer(GL_SHADER_STORAGE_BUFFER, usage) {}

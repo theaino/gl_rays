@@ -23,8 +23,9 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(tinyfiledialogs CONFIG REQUIRED)
 
-include_directories(
+target_include_directories(gl_rays PRIVATE
   ${OPENGL_INCLUDE_DIR}
   )
 
@@ -34,5 +35,6 @@ target_link_libraries(gl_rays PRIVATE
   glfw
   glm::glm
   imgui::imgui
+  tinyfiledialogs::tinyfiledialogs
 )
 

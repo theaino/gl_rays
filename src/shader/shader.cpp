@@ -4,55 +4,34 @@
 #include <GL/glext.h>
 // clang-format on
 #include <iostream>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
 #include <string>
 
 #include "shader.hpp"
 
-GLuint createShader(std::string content, GLenum shader_type) {
-  GLuint shader = glCreateShader(shader_type);
+Shader::Shader(GLenum type) {
+  this->type = type;
+  this->id = glCreateShader(type);
+}
+
+Shader::~Shader() { glDeleteShader(this->id); }
+
+void Shader::source(std::string content) {
   const char *source = content.c_str();
-  glShaderSource(shader, 1, &source, NULL);
-  glCompileShader(shader);
-
-  int success;
-  char infoLog[512];
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-  if (!success) {
-    glGetShaderInfoLog(shader, 512, NULL, infoLog);
-    std::cout << "Failed to compile " << shader_type << ": " << infoLog
-              << std::endl;
-    exit(1);
-  };
-
-  return shader;
+  glShaderSource(this->id, 1, &source, NULL);
 }
 
-GLuint createProgram(int n, ...) {
-  GLuint program = glCreateProgram();
-
-  va_list ptr;
-
-  va_start(ptr, n);
-  for (int i = 0; i < n; i++) {
-    GLuint shader = va_arg(ptr, GLuint);
-
-    glAttachShader(program, shader);
-  }
-  va_end(ptr);
-
-  glLinkProgram(program);
-
+int Shader::compile() {
+  glCompileShader(this->id);
   int success;
-  char infoLog[512];
-  glGetProgramiv(program, GL_LINK_STATUS, &success);
-  if (!success) {
-    glGetProgramInfoLog(program, 512, NULL, infoLog);
-    printf("Failed to link program: %s\n", infoLog);
-    exit(1);
-  }
-
-  return program;
+  glGetShaderiv(this->id, GL_COMPILE_STATUS, &success);
+  return success;
 }
+
+void Shader::logErrors() {
+  char infoLog[512];
+  glGetShaderInfoLog(this->id, 512, NULL, infoLog);
+  std::cout << "Failed to compile " << this->type << ": " << infoLog
+            << std::endl;
+}
+
+GLuint Shader::getID() { return this->id; }

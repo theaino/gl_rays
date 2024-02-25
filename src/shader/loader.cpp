@@ -35,6 +35,12 @@ std::string ShaderLoader::read(std::string path) {
   return content;
 }
 
+Shader ShaderLoader::load(std::string path, GLenum type) {
+  Shader shader(type);
+  shader.source(read(path));
+  return shader;
+}
+
 std::string ShaderLoader::getInclude(std::string include) {
   for (std::string path : include_paths) {
     std::string file_path = path + include;

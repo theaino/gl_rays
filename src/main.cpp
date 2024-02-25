@@ -16,6 +16,7 @@
 #include "settings/render.hpp"
 #include "settings/state.hpp"
 #include "shader/loader.hpp"
+#include "shader/program.hpp"
 #include "shader/shader.hpp"
 #include "window/window.hpp"
 
@@ -33,15 +34,33 @@ int main(int argc, char **argv) {
   ShaderLoader loader = ShaderLoader();
   loader.addIncludePath("shaders/");
 
-  GLuint vertex_shader =
-      createShader(loader.read("plane/vertex.glsl"), GL_VERTEX_SHADER);
-  GLuint fragment_shader =
-      createShader(loader.read("plane/fragment.glsl"), GL_FRAGMENT_SHADER);
-  GLuint draw_program = createProgram(2, vertex_shader, fragment_shader);
+  Shader vertex_shader = loader.load("plane/vertex.glsl", GL_VERTEX_SHADER);
+  if (vertex_shader.compile() != 1) {
+    vertex_shader.logErrors();
+    return -1;
+  }
+  Shader fragment_shader =
+      loader.load("plane/fragment.glsl", GL_FRAGMENT_SHADER);
+  if (fragment_shader.compile() != 1) {
+    fragment_shader.logErrors();
+    return -1;
+  }
+  Program draw_program = Program({vertex_shader, fragment_shader});
+  if (draw_program.link() != 1) {
+    draw_program.logErrors();
+    return -1;
+  }
 
-  GLuint compute_shader =
-      createShader(loader.read("render/compute.glsl"), GL_COMPUTE_SHADER);
-  GLuint compute_program = createProgram(1, compute_shader);
+  Shader compute_shader = loader.load("render/compute.glsl", GL_COMPUTE_SHADER);
+  if (compute_shader.compile() != 1) {
+    compute_shader.logErrors();
+    return -1;
+  }
+  Program compute_program = Program({compute_shader});
+  if (compute_program.link() != 1) {
+    compute_program.logErrors();
+    return -1;
+  }
 
   // The 2d plane everything is drawn on
   GLuint plane = createPlane();
@@ -66,28 +85,28 @@ int main(int argc, char **argv) {
 
     ssbo.bind(2);
 
-    glUseProgram(compute_program);
+    compute_program.use();
 
     // Set uniforms
-    glUniform1i(glGetUniformLocation(compute_program, "img_old"), 1);
+    glUniform1i(glGetUniformLocation(compute_program.getID(), "img_old"), 1);
 
     camera.updateUBO();
-    camera.ubo.bindUniformBlock(compute_program, "CameraSettings", 3);
+    camera.ubo.bindUniformBlock(compute_program.getID(), "CameraSettings", 3);
 
     render.updateUBO();
-    render.ubo.bindUniformBlock(compute_program, "RenderSettings", 4);
+    render.ubo.bindUniformBlock(compute_program.getID(), "RenderSettings", 4);
 
     state.updateUBO();
-    state.ubo.bindUniformBlock(compute_program, "StateSettings", 5);
+    state.ubo.bindUniformBlock(compute_program.getID(), "StateSettings", 5);
 
     // Run compute shader
     glDispatchCompute((unsigned int)WIDTH / 32, (unsigned int)HEIGHT / 32, 1);
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // Draw result to screen
-    glUseProgram(draw_program);
+    draw_program.use();
 
-    glUniform1i(glGetUniformLocation(draw_program, "tex"), 0);
+    glUniform1i(glGetUniformLocation(draw_program.getID(), "tex"), 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
 

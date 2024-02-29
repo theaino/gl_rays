@@ -12,6 +12,10 @@
 #include "imgui_style.hpp"
 #include "window.hpp"
 
+void error_callback(int error, const char *description) {
+  std::cerr << "GLFW error " << error << ": " << description << std::endl;
+}
+
 Window::Window(int width, int height, std::string title) {
   this->width = width;
   this->height = height;
@@ -51,8 +55,10 @@ void Window::logErrors() {
 }
 
 int Window::init() {
+  glfwSetErrorCallback(error_callback);
+
   if (!glfwInit()) {
-    std::cerr << "to initialize GLFW" << std::endl;
+    std::cerr << "Failed to initialize GLFW" << std::endl;
     return -1;
   }
 

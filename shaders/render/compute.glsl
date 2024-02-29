@@ -12,7 +12,7 @@ struct Triangle {
   vec3 c;
   vec3 color;
   float source;
-  float reflect_angle;
+  float specularity;
 };
 
 layout(std430, binding = 2) buffer TriangleBlock {
@@ -43,35 +43,23 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
   vec3 color = vec3(0);
   vec3 color_multiplier = vec3(1);
 
-  while (true) {
-    int count = bounces - c_bounces + 1;
-    if (c_bounces == 0) {
-      return color;
-    }
-
+  for (int c_bounces = bounces; c_bounces >= 0; --c_bounces) {
     // Get intersecting triangle
     int triangle_idx = -1;
     float min_distance = 0;
-    for (int i = 0; i < triangles.length(); i++) {
+    for (int i = 0; i < triangles.length(); ++i) {
       float distance = triangle_line_intersection(c_direction, c_origin, triangles[i].a, triangles[i].b, triangles[i].c);
       if (distance <= 0) {
         continue;
       }
-
       if (triangle_idx == -1 || distance < min_distance) {
         min_distance = distance;
         triangle_idx = i;
       }
     }
     if (triangle_idx == -1) {
-      return color;
+      break;
     }
-    vec3 collision = min_distance * direction + origin;
-
-    // Calculate color
-    color_multiplier *= triangles[triangle_idx].color;
-    vec3 source_color = color_multiplier * triangles[triangle_idx].source;
-    color = vec3(max(source_color.x, color.x), max(source_color.y, color.y), max(source_color.z, color.z));
 
     // Calculate normal
     vec3 normal = cross(triangles[triangle_idx].b - triangles[triangle_idx].a, triangles[triangle_idx].c - triangles[triangle_idx].a);
@@ -79,23 +67,22 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
     if (dot(normal, c_direction) > 0) {
       normal *= -1;
     }
+
+    vec3 collision = min_distance * direction + origin;
     c_direction = reflect(direction, normal);
 
-    // Darken light based on angle
-    color_multiplier *= dot(c_direction, normal);
+    color += triangles[triangle_idx].color * triangles[triangle_idx].source * color_multiplier;
 
     // Scatter reflected ray
-    float alpha = random();
-    alpha = radians((alpha * alpha - 0.5) * triangles[triangle_idx].reflect_angle);
+    float alpha = radians((random()) * 90);
     float beta = radians((random() - 0.5) * 360);
-    c_direction = scatter(c_direction, normal, alpha, beta);
-    if (dot(c_direction, normal) < 0) {
-      c_direction *= -1;
-    }
+    vec3 diffusion = scatter(normal, normal, alpha, beta);
+    diffusion = normalize(diffusion);
+    c_direction = mix(diffusion, c_direction, triangles[triangle_idx].specularity);
 
     c_origin = collision;
-    c_bounces--;
   }
+  return color;
 }
 
 void main() {
@@ -103,22 +90,27 @@ void main() {
   init_random(uvec3(texel_coord, state.time));
 
   // Calculate direction vector
-  uint size = min(state.width, state.height);
-  float x = float(texel_coord.x) - float(state.width) / 2;
-  x /= size / 2;
-  float y = float(texel_coord.y) - float(state.height) / 2;
-  y /= size / 2;
-  vec3 direction = vec3(x * tan(camera.fov), y * tan(camera.fov), -1);
-  direction = normalize(direction);
-  mat3 rotation_x = mat3(1, 0, 0,
-                        0, cos(camera.rotation.x), -sin(camera.rotation.x),
-                        0, sin(camera.rotation.x), cos(camera.rotation.x));
+  float aspect_ratio = float(state.width) / float(state.height);
+  vec3 direction = normalize(vec3(
+    (2.0 * (float(texel_coord.x) + 0.5) / float(state.width) - 1.0) * tan(camera.fov) * aspect_ratio,
+    -(1.0 - 2.0 * (float(texel_coord.y) + 0.5) / float(state.height)) * tan(camera.fov),
+    -1.0
+  ));
 
-  mat3 rotation_y = mat3(cos(camera.rotation.y), 0, sin(camera.rotation.y),
-                        0, 1, 0,
-                        -sin(camera.rotation.y), 0, cos(camera.rotation.y));
-  direction = rotation_x * direction;
-  direction = rotation_y * direction;
+  // Apply camera rotations
+  mat3 rotation_x = mat3(
+    1.0, 0.0, 0.0,
+    0.0, cos(camera.rotation.x), -sin(camera.rotation.x),
+    0.0, sin(camera.rotation.x), cos(camera.rotation.x)
+  );
+
+  mat3 rotation_y = mat3(
+    cos(camera.rotation.y), 0.0, sin(camera.rotation.y),
+    0.0, 1.0, 0.0,
+    -sin(camera.rotation.y), 0.0, cos(camera.rotation.y)
+  );
+
+  direction = rotation_x * rotation_y * direction;
 
   // Mix color with old image generated
   vec4 old_color = imageLoad(tex, texel_coord);

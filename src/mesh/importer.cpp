@@ -13,7 +13,7 @@ void MeshImporter::loadWavefront(std::string path) {
   glm::vec3 c_color;
 
   float c_source;
-  float c_reflect_angle;
+  float c_specularity;
   while (std::getline(file, line)) {
     if (line.empty()) {
       continue;
@@ -40,9 +40,9 @@ void MeshImporter::loadWavefront(std::string path) {
 
       c_source = std::stof(parts[1]);
 
-    } else if (parts[0] == "m_dif") {
+    } else if (parts[0] == "m_spc") {
 
-      c_reflect_angle = std::stof(parts[1]);
+      c_specularity = std::stof(parts[1]);
 
     } else if (parts[0] == "f") {
 
@@ -58,7 +58,7 @@ void MeshImporter::loadWavefront(std::string path) {
       uint32_t v0 = std::stoul(a_str) - 1;
       uint32_t v1 = std::stoul(b_str) - 1;
       uint32_t v2 = std::stoul(c_str) - 1;
-      mesh.addTriangle({v0, v1, v2, c_color, c_source, c_reflect_angle});
+      mesh.addTriangle({v0, v1, v2, c_color, c_source, c_specularity});
     }
   }
 

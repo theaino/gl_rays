@@ -24,7 +24,7 @@ t_shader_triangle *Mesh::getShaderTriangles() {
     shader_triangle.v2 = vertices[triangle.v2];
     shader_triangle.color = triangle.color;
     shader_triangle.source = triangle.source;
-    shader_triangle.reflect_angle = triangle.reflect_angle;
+    shader_triangle.specularity = triangle.specularity;
     shader_triangles[idx] = shader_triangle;
   }
   return shader_triangles;

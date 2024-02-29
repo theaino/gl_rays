@@ -2,7 +2,7 @@
 #include "imgui.h"
 
 RenderSettings::RenderSettings() : ubo(GL_DYNAMIC_DRAW) {
-  settings = {.blending = 100, .max_bounces = 10};
+  settings = {.blending = 100, .max_bounces = 2};
   ubo.setData(&settings, sizeof(t_render_settings));
 }
 

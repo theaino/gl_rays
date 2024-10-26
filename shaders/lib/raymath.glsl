@@ -28,6 +28,24 @@ float triangle_line_intersection(vec3 direction, vec3 origin, vec3 a, vec3 b, ve
   return -1;
 }
 
+float cube_line_intersection(vec3 direction, vec3 origin, vec3 begin, vec3 end) {
+	vec3 inv_dir = 1.0 / direction;
+	vec3 t_min = (begin - origin) * inv_dir;
+	vec3 t_max = (end - origin) * inv_dir;
+
+	vec3 t1 = min(t_min, t_max);
+	vec3 t2 = max(t_min, t_max);
+
+	float t_near = max(max(t1.x, t1.y), t1.z);
+	float t_far = min(min(t2.x, t2.y), t2.z);
+
+	if (t_near > t_far || t_far < 0.0) {
+		return -1;
+	}
+
+	return t_near;
+}
+
 vec3 reflect(vec3 direction, vec3 normal) {
   return direction - (2 * normal * dot(direction, normal));
 }

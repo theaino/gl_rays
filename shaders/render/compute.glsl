@@ -15,22 +15,40 @@ struct Triangle {
   float specularity;
 };
 
-layout(std430, binding = 2) buffer TriangleBlock {
-  Triangle triangles[];
+struct BVH {
+	bool has_children;
+	int left_index;
+	int right_index;
+	int triangle_count;
+	int triangle_offset;
+	vec3 bound_start;
+	vec3 bound_end;
 };
 
-layout(std140, binding = 3) uniform CameraSettings {
+layout(std430, binding = 1) buffer TriangleBlock {
+	Triangle triangles[];
+};
+
+layout(std430, binding = 2) buffer TriangleIndexBlock {
+	int triangle_indices[];
+};
+
+layout(std430, binding = 3) buffer BVHBlock {
+	BVH nodes[];
+};
+
+layout(std140, binding = 4) uniform CameraSettings {
   vec3 position;
   vec2 rotation;
   float fov;
 } camera;
 
-layout(std140, binding = 4) uniform RenderSettings {
+layout(std140, binding = 5) uniform RenderSettings {
   int blending;
   int max_bounces;
 } render;
 
-layout(std140, binding = 5) uniform StateSettings {
+layout(std140, binding = 6) uniform StateSettings {
   int width;
   int height;
   int time;
@@ -47,16 +65,34 @@ vec3 calculate_color(vec3 direction, vec3 origin, int bounces) {
     // Get intersecting triangle
     int triangle_idx = -1;
     float min_distance = 0;
-    for (int i = 0; i < triangles.length(); ++i) {
-      float distance = triangle_line_intersection(c_direction, c_origin, triangles[i].a, triangles[i].b, triangles[i].c);
-      if (distance <= 0) {
-        continue;
-      }
-      if (triangle_idx == -1 || distance < min_distance) {
-        min_distance = distance;
-        triangle_idx = i;
-      }
-    }
+
+		// Traverse BVH
+		int stack[64];
+		int stack_ptr = 0;
+		stack[stack_ptr++] = 0;
+		while (stack_ptr > 0) {
+			int node_index = stack[stack_ptr--];
+			BVH node = nodes[node_index];
+			if (cube_line_intersection(direction, origin, node.bound_start, node.bound_end) == -1) {
+				continue;
+			}
+			if (node.has_children) {
+				stack[stack_ptr++] = node.left_index;
+				stack[stack_ptr++] = node.right_index;
+			} else {
+				for (int i = node.triangle_offset; i < node.triangle_offset + node.triangle_count; ++i) {
+					float distance = triangle_line_intersection(c_direction, c_origin, triangles[i].a, triangles[i].b, triangles[i].c);
+					if (distance <= 0) {
+						continue;
+					}
+					if (triangle_idx == -1 || distance < min_distance) {
+						min_distance = distance;
+						triangle_idx = i;
+					}
+				}
+			}
+		}
+
     if (triangle_idx == -1) {
       break;
     }

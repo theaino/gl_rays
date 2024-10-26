@@ -1,3 +1,5 @@
+#define BVH_DEPTH 10
+
 // clang-format off
 #include "GL/glew.h"
 #include "GL/gl.h"
@@ -8,8 +10,10 @@
 #include "mesh/importer.hpp"
 #include "objects/plane.hpp"
 #include "shader/loader.hpp"
+#include "mesh/bvh.hpp"
 
-Renderer::Renderer(int width, int height) {
+Renderer::Renderer(int width, int height)
+: bvh_generator(BVH_DEPTH) {
   render_settings = new RenderSettings();
   camera_settings = new CameraSettings();
   state_settings = new StateSettings(width, height);
@@ -58,8 +62,13 @@ int Renderer::init() {
   MeshImporter importer = MeshImporter();
   importer.loadWavefront("models/shape_ape.mobj");
   Mesh *mesh = importer.getMesh();
-  mesh_ssbo = new SSBO(GL_DYNAMIC_DRAW);
-  mesh->updateSSBO(mesh_ssbo);
+
+	// BVH
+	triangle_ssbo = new SSBO(GL_DYNAMIC_DRAW);
+	triangle_index_ssbo = new SSBO(GL_DYNAMIC_DRAW);
+	bvh_ssbo = new SSBO(GL_DYNAMIC_DRAW);
+	bvh_generator.generate(mesh);
+	bvh_generator.updateSSBO(triangle_ssbo, triangle_index_ssbo, bvh_ssbo);
 
   // Uniforms
   glUniform1i(glGetUniformLocation(draw_program->getID(), "tex"), 0);
@@ -71,20 +80,22 @@ int Renderer::init() {
 void Renderer::setUniforms() {
   camera_settings->updateUBO();
   camera_settings->ubo.bindUniformBlock(compute_program->getID(),
-                                        "CameraSettings", 3);
+                                        "CameraSettings", 4);
 
   render_settings->updateUBO();
   render_settings->ubo.bindUniformBlock(compute_program->getID(),
-                                        "RenderSettings", 4);
+                                        "RenderSettings", 5);
 
   state_settings->updateUBO();
   state_settings->ubo.bindUniformBlock(compute_program->getID(),
-                                       "StateSettings", 5);
+                                       "StateSettings", 6);
 }
 
 void Renderer::draw() {
   compute_program->use();
-  mesh_ssbo->bind(2);
+  triangle_ssbo->bind(1);
+  triangle_index_ssbo->bind(2);
+  bvh_ssbo->bind(3);
   texture->bind();
   glDispatchCompute(state_settings->settings.width / 32 + 1,
                     state_settings->settings.height / 32 + 1, 1);

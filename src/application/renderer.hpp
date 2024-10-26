@@ -6,6 +6,7 @@
 #include "settings/render.hpp"
 #include "settings/state.hpp"
 #include "shader/program.hpp"
+#include "mesh/bvh.hpp"
 
 class Renderer {
 public:
@@ -19,7 +20,11 @@ public:
   CameraSettings *camera_settings;
   StateSettings *state_settings;
 
-  SSBO *mesh_ssbo;
+	SSBO *triangle_ssbo;
+	SSBO *triangle_index_ssbo;
+	SSBO *bvh_ssbo;
+
+	BVHGenerator bvh_generator;
 
 private:
   Program *draw_program;

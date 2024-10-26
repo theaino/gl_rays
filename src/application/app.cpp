@@ -59,8 +59,10 @@ void App::drawImGui() {
         if (path != nullptr) {
           MeshImporter importer;
           importer.loadWavefront(std::string(path));
-          Mesh mesh = *importer.getMesh();
-          mesh.updateSSBO(renderer->mesh_ssbo);
+          Mesh *mesh = importer.getMesh();
+
+					renderer->bvh_generator.generate(mesh);
+					renderer->bvh_generator.updateSSBO(renderer->triangle_ssbo, renderer->triangle_index_ssbo, renderer->bvh_ssbo);
         }
       }
       ImGui::EndMenu();
